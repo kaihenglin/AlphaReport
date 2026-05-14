@@ -1,0 +1,91 @@
+from __future__ import annotations
+
+from sqlalchemy import (
+    Column, Integer, String, Text, DateTime, Boolean, Float,
+    ForeignKey, Table, UniqueConstraint, Index, func,
+)
+from sqlalchemy.orm import DeclarativeBase, relationship
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+report_tags = Table(
+    "report_tags",
+    Base.metadata,
+    Column("report_id", Integer, ForeignKey("reports.id", ondelete="CASCADE"), primary_key=True),
+    Column("tag_id", Integer, ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True),
+)
+
+
+class Report(Base):
+    __tablename__ = "reports"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    title = Column(String(500), nullable=False, index=True)
+    authors = Column(Text)
+    abstract = Column(Text)
+    full_text = Column(Text)
+    has_full_text = Column(Boolean, default=False)
+    source = Column(String(50), nullable=False)
+    source_url = Column(String(1000))
+    doi = Column(String(200), index=True)
+    arxiv_id = Column(String(50), index=True)
+    published_date = Column(DateTime)
+    pdf_path = Column(String(500))
+    content_hash = Column(String(64), unique=True, nullable=False, index=True)
+
+    summary = Column(Text)
+    tables_json = Column(Text)
+    equations_json = Column(Text)
+
+    markets = Column(String(200))
+    asset_classes = Column(String(200))
+    frequencies = Column(String(200))
+    topics = Column(String(200))
+    classification_confidence = Column(Float, default=0.0)
+    classification_method = Column(String(20))
+
+    analysis_json = Column(Text)
+
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    tags = relationship("Tag", secondary=report_tags, back_populates="reports")
+
+
+class Tag(Base):
+    __tablename__ = "tags"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    dimension = Column(String(50), nullable=False)
+    value = Column(String(100), nullable=False)
+
+    reports = relationship("Report", secondary=report_tags, back_populates="tags")
+
+    __table_args__ = (UniqueConstraint("dimension", "value"),)
+
+
+class SearchHistory(Base):
+    __tablename__ = "search_history"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    task_id = Column(String(36), unique=True, nullable=False, index=True)
+    criteria_json = Column(Text, nullable=False)
+    status = Column(String(20), default="pending")
+    results_count = Column(Integer, default=0)
+    newly_added = Column(Integer, default=0)
+    errors_json = Column(Text)
+    created_at = Column(DateTime, server_default=func.now())
+    completed_at = Column(DateTime)
+
+
+class UserCriteriaPreset(Base):
+    __tablename__ = "criteria_presets"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), nullable=False, unique=True)
+    criteria_json = Column(Text, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

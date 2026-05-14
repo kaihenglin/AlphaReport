@@ -1,0 +1,9 @@
+name: "每日量化扫描"
+description: "从 arXiv 和 BigQuant 收集最新的量化策略、因子模型相关研报"
+prompt_template: |
+  请帮我从 arXiv 和 BigQuant 收集最新的量化金融研报，
+  主题包括：量化策略、因子模型。
+  每个数据源最多获取 {max_results} 篇。
+  收集完成后请简要总结收集到的研报情况。
+default_params:
+  max_results: 15

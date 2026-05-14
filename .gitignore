@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+.DS_Store
+.claude/
+data/pdfs/
+data/report_library.db
+frontend-v2/node_modules/
+frontend-v2/dist/

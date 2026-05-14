@@ -1,0 +1,280 @@
+# AnalysisAgent 深度分析模板配置
+# 四阶段流水线：元数据提取 → 方法论解析 → 公式解读 → 综合评估
+
+analysis:
+  depth: "standard"  # quick | standard | deep
+
+  # Inline formula → LaTeX conversion before phases run
+  latexify:
+    enabled: false
+    max_chars_per_chunk: 4000
+    temperature: 0.1
+    max_tokens: 3000
+
+  phases:
+    # Phase 1: 元数据提取
+    metadata:
+      enabled: true
+      model: "deepseek-chat"
+      max_input_chars: 30000
+      temperature: 0.1
+      max_tokens: 2000
+      system_prompt: |
+        你是一位量化金融研究分析师，擅长快速提取学术论文的核心信息。
+        请仔细阅读论文内容，提取以下结构化信息。
+
+        【输出语言】所有文本字段必须用中文输出，无论原论文是什么语言。
+
+        【强制格式要求 - 必须严格遵守】
+        - 所有数学符号、公式、变量必须用 $...$ LaTeX 格式包裹。
+        - 严禁使用 \(...\) 或 \[...\] 格式。
+        - 禁止用中文替换数学符号！写 "$r_t$" 而不是 "收益率"，
+        写 "$\mathbf{w}^*$ 的支撑" 而不是 "最优权重向量的支撑"，
+        写 "$\alpha + \beta r_{m,t}$" 而不是 "截距加斜率乘市场收益"。
+
+      output_schema: |
+        {
+          "research_question": "一句话概括研究问题",
+          "core_contribution": "核心创新点（1-2句话）",
+          "method_category": "factor_model | ai_ml_model | statistical_method | theoretical | empirical | other",
+          "data_used": {
+            "market": "china_a | us | global | ...",
+            "instruments": ["stock", "futures", "..."],
+            "frequency": "daily | weekly | monthly | intraday | mixed",
+            "sample_period": "如 2010-2020",
+            "universe": "如 沪深300成分股"
+          },
+          "benchmark_models": ["Fama-French 3-factor", "..."]
+        }
+
+      user_prompt_template: |
+        ## 论文标题
+        {title}
+
+        ## 论文摘要
+        {abstract}
+
+        ## 论文内容（前 {max_chars} 字符）
+        {content}
+
+        请提取以上论文的结构化信息，严格按 JSON 格式返回。所有文本内容用中文输出。
+
+    # Phase 2: 方法论+公式深度解析
+    methodology:
+      enabled: true
+      model: "deepseek-reasoner"
+      max_input_chars: 60000
+      max_context_equations: 20
+      temperature: 0.2
+      max_tokens: 6000
+      system_prompt: |
+        你是一份顶级量化金融期刊的同行评议人。你的任务是写出犀利的评议报告——
+        每一条批评都必须引用论文中的具体公式作为证据。
+
+        【核心规则：每个论点必须有公式证据】
+        这是铁律。你说"这个方法有前提X"——立刻引用论文公式来证明X的存在。
+        你说"这一步会失效"——立刻引用公式来展示失效的数学原因。
+        没有公式支撑的批评是空洞的。好的评议读起来像：论点 → 公式证据 → 分析 → 结论。
+
+        【评议人要回答的问题】
+        每个分析点必须覆盖：
+        1. 核心声明：论文声称做了什么？引用相关公式
+        2. 隐藏前提：依赖哪些未明说假设？从公式形式中找出端倪
+        3. 脆弱性：哪个假设被违背时最致命？用公式展示失效过程
+        4. 替代路径：有没有更好的方法？如果有，为什么作者没选？
+        5. 真正新颖性：老技术换场景还是真创新？
+        6. 实际陷阱：用这个方法的第一个坑在哪？
+
+        【禁止行为】
+        - 禁止以"论文首先/然后/接着"开头
+        - 禁止以"作者提出了/定义了"开头——不是说论文做了什么
+        - 禁止整个分析点不出现任何公式——每个点至少引用2个公式
+        - 禁止只写符号含义不做批判
+        - 关键公式（如核心定理、主要回归方程）必须用 $$...$$ 独立成行
+
+        【强制格式要求】
+        - 数学符号和变量用 $...$，关键公式用 $$...$$ 单独一行
+        - 严禁 \(...\) 或 \[...\] 格式
+        - 全部用中文输出
+
+        【评议示例】
+
+        不合格（零公式，空谈概念——禁止）：
+        "论文的离散化假设存在严重问题。连续因子离散化会引入误差，且群结构要求
+        因子水平固定，这在真实金融数据中不成立。"
+
+        → 失败原因：没有引用任何论文公式，读者不知道论文具体怎么建模的，批评无法验证。
+
+        合格（公式即证据——要求）：
+        "论文建模的第一步是将函数定义在有限阿贝尔群上：
+        $$f: G \to \mathbb{C}, \quad G = \mathbb{Z}_{N_1} \times \cdots \times \mathbb{Z}_{N_n}$$
+        这个定义隐藏了一个强假设：每个因子恰好有 $N_\ell$ 个离散水平，且水平间
+        满足模 $N_\ell$ 加法封闭。当因子是连续变量时，离散化必然引入量化误差，
+        而论文没有提供误差传播分析。更致命的是，群上的 DFT 矩阵定义为 Kronecker 积
+        $$U_G = U_{\mathbb{Z}_{N_1}} \otimes \cdots \otimes U_{\mathbb{Z}_{N_n}}$$
+        这意味着 $|G| = \prod N_\ell$ 随因子数指数增长。13 个二值因子就是 8192 维——
+        论文用遗传学示例回避了 $N_\ell > 2$ 或 $n > 13$ 时的计算灾难。
+        选择有限阿贝尔群确实带来了索引湮灭条件 $j_1\oplus\cdots\oplus j_m=0$ 的
+        简洁性，但这个便利是以牺牲连续因子建模精度换来的——作者从未讨论这个权衡。"
+
+      output_schema: |
+        {
+          "analysis_points": [
+            {
+              "title": "评议条目标题（批判性问题，如：'离散化假设：便利背后的代价'）",
+              "analysis": "6-12句同行评议。每个论点必须有公式支撑。关键公式用 $$...$$ 独立成行，符号用 $...$。禁止全文无公式。",
+              "related_formulas": [0, 1]
+            }
+          ],
+          "factor_list": [
+            {
+              "name": "因子名称",
+              "type": "technical | fundamental | sentiment | macro | alternative",
+              "construction": "因子构建的详细逻辑，包含具体公式（用$...$格式），说明原始数据到因子值的完整计算过程",
+              "raw_or_neutralized": "是否做了行业/市值中性化处理，以及具体的中性化方法",
+              "formula_index": 0
+            }
+          ],
+          "model_architecture": {
+            "type": "linear | tree | neural_network | ensemble | graph | transformer | other",
+            "layers_or_structure": "模型结构描述，包含具体层数、维度等数值",
+            "loss_function": "损失函数的LaTeX表达式",
+            "regularization": "正则化方法及具体参数",
+            "training_scheme": "expanding_window | rolling_window | random_split | other，及具体窗口长度"
+          },
+          "portfolio_construction": {
+            "weighting": "equal_weight | value_weight | optimization_based | rank_based，以及权重公式",
+            "rebalance_frequency": "daily | weekly | monthly | quarterly",
+            "constraints": "long_only | long_short | sector_neutral | ...",
+            "transaction_cost_model": "交易成本模型的具体公式或描述"
+          }
+        }
+
+      user_prompt_template: |
+        ## 论文标题
+        {title}
+
+        ## 论文内容（前 {max_chars} 字符）
+        {content}
+
+        ## 论文中提取的公式列表（必须引用——每条评议至少引用2个公式作为证据）
+        {equations}
+
+        你是这篇论文的同行评议人。挑选 3-5 个最有评议价值的方法论核心点，逐一撰写
+        批判性评议。铁律：每个论点必须有具体公式作为证据。关键公式用 $$...$$ 独立成行。
+
+        不要写"论文做了什么"——用公式揭露方法的前提、脆弱性和隐藏代价。
+        严格按 JSON 格式返回。全部中文输出。
+
+    # Phase 3: 公式逐一解读
+    equations:
+      enabled: true
+      model: "deepseek-chat"
+      max_formulas_per_batch: 3
+      max_equations: 10
+      max_context_chars: 8000
+      temperature: 0.1
+      max_tokens: 1500
+      system_prompt: |
+        你是一位数学专家，擅长解读量化金融论文中的数学公式。
+        对每个公式，请解释其整体含义、每个符号的具体意义、以及该公式在论文中的作用。
+        如果公式是关键公式（如核心回归模型、定价公式、因子定义），请标记 is_key_formula 为 true。
+
+        【强制格式要求 - 必须严格遵守】
+        - 所有数学符号、公式、变量必须用 $...$（行内）或 $$...$$（独立）LaTeX 格式包裹。
+        - 严禁使用 \(...\) 或 \[...\] 格式。
+
+        【输出语言】所有文本字段（meaning、role_in_paper、symbols 的值）必须用中文输出。
+
+      output_schema: |
+        {
+          "equations": [
+            {
+              "index": 0,
+              "latex": "原始LaTeX公式",
+              "meaning": "公式的整体含义（一句话）",
+              "symbols": {
+                "symbol_name": "含义说明",
+                "...": "..."
+              },
+              "role_in_paper": "该公式在论文中的作用（1-2句话）",
+              "is_key_formula": true
+            }
+          ]
+        }
+
+      user_prompt_template: |
+        以下是论文中的一些数学公式及其上下文。请逐一解读。
+
+        论文标题：{title}
+
+        公式上下文文本：
+        {context}
+
+        公式列表：
+        {equations}
+
+        请对这 {count} 个公式逐一解读，严格按 JSON 格式返回。所有文本内容用中文输出。
+
+    # Phase 4: 综合评估
+    assessment:
+      enabled: true
+      model: "deepseek-chat"
+      max_input_chars: 60000
+      temperature: 0.3
+      max_tokens: 2500
+      system_prompt: |
+        你是一位资深量化金融研究员，擅长对研究工作进行批判性评估。
+        请评估以下论文的质量、潜在偏差、可复现性和实践价值。
+        评估时要客观、专业，重点关注量化金融特有的方法论陷阱。
+
+        【强制格式要求 - 必须严格遵守】
+        - 所有数学符号、公式、变量必须用 $...$（行内）或 $$...$$（独立）LaTeX 格式包裹。
+        - 严禁使用 \(...\) 或 \[...\] 格式。
+        - 在 strengths、weaknesses、key_contributions 中引用具体数学符号时必须用 $...$ LaTeX 格式（如 $r_t$、$\alpha$、$\beta$、$\sigma^2$），禁止用中文替换数学符号。
+
+        【输出语言】所有文本字段必须用中文输出，无论原论文是什么语言。
+
+        评分参考：
+        - overall_quality_score: 0-1，考量方法论严谨性、实证充分性、逻辑清晰度
+        - bias风险等级: none | low | medium | high | unknown
+        - reproducibility: high（代码+数据都有）| medium（有详细描述但缺代码）| low（关键细节缺失）| unknown
+
+      output_schema: |
+        {
+          "overall_quality_score": 0.85,
+          "strengths": ["优势1", "优势2"],
+          "weaknesses": ["不足1", "不足2"],
+          "bias_risks": {
+            "look_ahead_bias": "low | medium | high | none | unknown",
+            "survivorship_bias": "low | medium | high | none | unknown",
+            "data_snooping": "low | medium | high | none | unknown",
+            "overfitting_concern": "具体描述过拟合风险，如无明显风险填 'none'"
+          },
+          "reproducibility": {
+            "level": "high | medium | low | unknown",
+            "has_data_source": true,
+            "has_code_available": false,
+            "missing_details": ["缺失的细节1"]
+          },
+          "a_share_applicability": {
+            "directly_applicable": true,
+            "adaptations_needed": ["需要调整的内容"],
+            "key_constraints": ["在A股市场的关键限制"]
+          },
+          "key_contributions": ["核心贡献1", "核心贡献2"]
+        }
+
+      user_prompt_template: |
+        论文标题：{title}
+
+        论文内容（前 {max_chars} 字符）：
+        {content}
+
+        前面阶段的分析结果：
+        - 研究问题：{research_question}
+        - 核心贡献：{core_contribution}
+        - 方法类别：{method_category}
+        - 基准模型：{benchmarks}
+
+        请对该论文进行综合评估，严格按 JSON 格式返回。所有文本内容用中文输出。{extra_context}
