@@ -72,33 +72,52 @@ POST /api/v1/reports/{id}/analyze
 | PDF 处理 | PyMuPDF + MinerU + Docling |
 | LLM | OpenAI 兼容接口 (DeepSeek / GPT / 智谱 / 月之暗面) |
 
-## 快速开始
+## 环境要求
 
-### 1. 环境准备
+- **Python** 3.10+
+- **Node.js** 18+
+- **npm** 9+
+
+## 安装与启动
+
+### 1. 克隆项目
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/kaihenglin/AlphaReport.git
 cd AlphaReport
+```
 
-# Python 后端
+### 2. 安装 Python 依赖
+
+```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+```
 
-# React 前端
+### 3. 安装前端依赖
+
+```bash
 cd frontend-v2
 npm install
 cd ..
 ```
 
-### 2. 配置 API Key
+### 4. 配置 API Key
 
 ```bash
 cp .env.example .env
-# 编辑 .env，至少填入一个 LLM API Key
 ```
 
-支持的 LLM 服务商：
+编辑 `.env` 文件，至少填入一个 LLM API Key：
+
+```bash
+# 必填 — OpenAI 兼容接口的 API Key（DeepSeek / 智谱 / 月之暗面 等）
+OPENAI_API_KEY=sk-your-key-here
+
+# 可选 — 如果用非 OpenAI 服务商，填写对应的 Base URL
+OPENAI_BASE_URL=https://api.deepseek.com/v1
+```
 
 | 服务商 | `OPENAI_BASE_URL` | model 示例 |
 |--------|-------------------|-----------|
@@ -107,11 +126,11 @@ cp .env.example .env
 | 智谱 | `https://open.bigmodel.cn/api/paas/v4` | `glm-4-flash` |
 | 月之暗面 | `https://api.moonshot.cn/v1` | `moonshot-v1-8k` |
 
-不配置 LLM 也能使用收集和规则分类功能，分类退回到纯规则引擎模式。
+> 不配置 LLM 也能使用收集和规则分类功能，分类会自动退回到纯规则引擎模式。
 
-如需切换模型，编辑 `configs/app.yaml` 中的 `llm` 字段。
+如需切换模型，编辑 `configs/app.yaml` 中的 `llm.model` 字段。
 
-### 3. 启动服务
+### 5. 启动服务
 
 **一键启动（推荐）：**
 
@@ -119,25 +138,25 @@ cp .env.example .env
 ./start.sh
 ```
 
-自动启动前后端，Ctrl+C 一键停止。
+自动启动前后端，Ctrl+C 一键停止所有服务。
 
-**分别启动：**
+**分别启动（调试时使用）：**
 
 ```bash
-# 终端1 — 后端（端口 8000）
+# 终端1 — 后端 API（端口 8000）
 source .venv/bin/activate
 PYTHONPATH=. python -m uvicorn reportagent.main:app --host 127.0.0.1 --port 8000 --reload
 
-# 终端2 — 前端（端口 3000）
+# 终端2 — 前端开发服务器（端口 3000）
 cd frontend-v2
 npm run dev
 ```
 
-打开 `http://localhost:3000`，API 文档 `http://localhost:8000/docs`。
+打开 `http://localhost:3000` 进入前端界面，API 文档 `http://localhost:8000/docs`。
 
-### 4. 本地 PDF 研报
+### 6. 添加本地 PDF 研报（可选）
 
-将 PDF 放入 `data/pdf_library/` 目录（支持子目录），收集时选择「本地PDF」数据源即可。
+将 PDF 放入 `data/pdf_library/` 目录（支持子目录），收集时选择「本地PDF」数据源即可自动扫描匹配。
 
 ## 使用指南
 
