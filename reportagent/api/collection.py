@@ -4,7 +4,7 @@ import asyncio
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from reportagent.api.deps import get_db
@@ -18,7 +18,6 @@ _tasks: dict[str, dict] = {}
 @router.post("/start")
 async def start_collection(
     criteria: UserCriteria,
-    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
     task_id = str(uuid.uuid4())
@@ -34,7 +33,7 @@ async def start_collection(
         "updated_at": now,
     }
 
-    background_tasks.add_task(_run_collection_pipeline, task_id, criteria)
+    asyncio.create_task(_run_collection_pipeline(task_id, criteria))
     return {"success": True, "data": {"task_id": task_id}}
 
 
