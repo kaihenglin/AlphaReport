@@ -129,6 +129,8 @@ class LocalPDFSource(BaseSource):
                 # Keep MinerU equations (better LaTeX); fall back to Docling if MinerU has none
                 if dparsed.equations and not equations_json_str:
                     equations_json_str = json.dumps(dparsed.equations, ensure_ascii=False)
+            except Exception as e:
+                logger.warning("Docling secondary parse failed for '%s': %s", pdf_path.name, e)
 
         # Normalize PDF extraction artifacts in formulas
         if equations_json_str:
@@ -139,8 +141,6 @@ class LocalPDFSource(BaseSource):
                 equations_json_str = json.dumps(eqs, ensure_ascii=False)
             except Exception:
                 pass
-            except Exception as e:
-                logger.warning("Docling secondary parse failed for '%s': %s", pdf_path.name, e)
 
         search_text = (
             (meta.get("title", "") + " " + text[:3000]).lower()

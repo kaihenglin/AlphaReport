@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import threading
 import uuid
 from datetime import datetime
 
@@ -13,6 +14,21 @@ from reportagent.models.schemas import UserCriteria
 router = APIRouter(prefix="/api/v1/collection", tags=["collection"])
 
 _tasks: dict[str, dict] = {}
+
+
+def _run_pipeline_in_thread(task_id: str, criteria: UserCriteria):
+    """Run the async pipeline in a dedicated thread with its own event loop."""
+    _tasks[task_id]["status"] = "running"
+    _tasks[task_id]["progress_message"] = "Thread started, running pipeline..."
+    _tasks[task_id]["updated_at"] = datetime.utcnow().isoformat()
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(_run_collection_pipeline(task_id, criteria))
+    except Exception as e:
+        _tasks[task_id]["status"] = "failed"
+        _tasks[task_id]["progress_message"] = f"Pipeline error: {e}"
+    finally:
+        loop.close()
 
 
 @router.post("/start")
@@ -33,7 +49,12 @@ async def start_collection(
         "updated_at": now,
     }
 
-    asyncio.create_task(_run_collection_pipeline(task_id, criteria))
+    thread = threading.Thread(
+        target=_run_pipeline_in_thread,
+        args=(task_id, criteria),
+        daemon=True,
+    )
+    thread.start()
     return {"success": True, "data": {"task_id": task_id}}
 
 
