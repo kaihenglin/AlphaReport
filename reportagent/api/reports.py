@@ -217,8 +217,53 @@ def _build_summary_from_analysis(analysis: dict, title: str) -> str:
     )
 
 
+def _strip_boilerplate(text: str) -> str:
+    """Strip Chinese brokerage report boilerplate: analyst headers, certificates, etc."""
+    import re as _re
+
+    lines = text.split("\n")
+    cleaned: list[str] = []
+    skip_block = False
+
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            cleaned.append(line)
+            continue
+
+        # Detect start of boilerplate blocks
+        if _re.match(
+            r"^(分析师|研究员|金融工程|证书编号|S079\d{10}|相关研究|证券研究报告|"
+            r"请务必参阅正文后面的信息披露|法律声明|免责声明|评级说明|"
+            r"投资评级|重要声明|信息披露|分析师声明|评级定义)",
+            stripped,
+        ):
+            skip_block = True
+            continue
+
+        # End of analyst block — resume when we see a real section header
+        if skip_block:
+            # Resume if line looks like a real section header (not boilerplate continuation)
+            if _re.match(
+                r"^[一二三四五六七八九十]+[、，.]|"
+                r"^[（(][一二三四五六七八九十]+[）)]|"
+                r"^(摘要|Abstract|引言|前言|结论|总结|背景|方法|数据|实证|回测|结果|分析|参考文献|附录|"
+                r"筹码|反转|动量|因子|收益|风险|模型|策略)",
+                stripped,
+            ):
+                skip_block = False
+            else:
+                continue
+
+        cleaned.append(line)
+
+    return "\n".join(cleaned)
+
+
 def _build_summary_from_content(report, content: str) -> str:
     """Fallback: build a summary prompt from raw content (no analysis)."""
+    # Strip brokerage report boilerplate before sending to LLM
+    content = _strip_boilerplate(content)
     extra_hints = ""
     import json as _json
     if report.tables_json:
