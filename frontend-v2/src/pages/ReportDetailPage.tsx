@@ -569,6 +569,24 @@ export default function ReportDetailPage() {
                                     className="text-xs text-gray-500 mt-0.5 leading-relaxed [&_.katex-display]:my-2 [&_.katex-display]:overflow-x-auto [&_.katex]:text-[0.95em]"
                                     dangerouslySetInnerHTML={{ __html: renderLatex(point.analysis as string) }}
                                   />
+                                  {point.marginal_contribution && (
+                                    <div className="mt-2 ml-2 pl-3 border-l-2 border-amber-300">
+                                      <span className="text-[10px] font-semibold text-amber-700 uppercase">边际贡献</span>
+                                      <div
+                                        className="text-xs text-gray-500 mt-0.5 [&_.katex]:text-[0.95em]"
+                                        dangerouslySetInnerHTML={{ __html: renderLatex(point.marginal_contribution as string) }}
+                                      />
+                                    </div>
+                                  )}
+                                  {point.practical_implication && (
+                                    <div className="mt-2 ml-2 pl-3 border-l-2 border-blue-300">
+                                      <span className="text-[10px] font-semibold text-blue-700 uppercase">实践推论</span>
+                                      <div
+                                        className="text-xs text-gray-500 mt-0.5 [&_.katex]:text-[0.95em]"
+                                        dangerouslySetInnerHTML={{ __html: renderLatex(point.practical_implication as string) }}
+                                      />
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             ))}
@@ -782,6 +800,35 @@ export default function ReportDetailPage() {
                               {analysisResult.assessment.a_share_applicability.key_constraints.join("、")}
                             </div>
                           )}
+                        </div>
+                      )}
+
+                      {/* Marginal Contribution Summary */}
+                      {analysisResult.assessment.marginal_contribution_summary && (
+                        <div className="bg-amber-50/50 rounded-lg p-4 border border-amber-200">
+                          <h4 className="text-xs font-semibold text-amber-700 uppercase mb-1">边际贡献总评</h4>
+                          <p
+                            className="text-xs text-gray-700 leading-relaxed [&_.katex]:text-[0.95em]"
+                            dangerouslySetInnerHTML={{ __html: renderLatex(analysisResult.assessment.marginal_contribution_summary) }}
+                          />
+                        </div>
+                      )}
+
+                      {/* Practical Implications */}
+                      {analysisResult.assessment.practical_implications.length > 0 && (
+                        <div className="bg-blue-50/50 rounded-lg p-4 border border-blue-200">
+                          <h4 className="text-xs font-semibold text-blue-700 uppercase mb-2">实践推论</h4>
+                          <ul className="space-y-2">
+                            {analysisResult.assessment.practical_implications.map((imp, i) => (
+                              <li key={i} className="text-xs text-gray-700 flex gap-2">
+                                <span className="text-blue-500 shrink-0 font-bold mt-0.5">{i + 1}.</span>
+                                <span
+                                  className="[&_.katex]:text-[0.95em]"
+                                  dangerouslySetInnerHTML={{ __html: renderLatex(imp) }}
+                                />
+                              </li>
+                            ))}
+                          </ul>
                         </div>
                       )}
 

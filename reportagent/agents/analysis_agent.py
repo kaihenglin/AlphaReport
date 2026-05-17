@@ -535,6 +535,8 @@ class AnalysisAgent:
                 bias_risks=bias_risks,
                 reproducibility=reproducibility,
                 a_share_applicability=a_share,
+                marginal_contribution_summary=resp.get("marginal_contribution_summary", ""),
+                practical_implications=resp.get("practical_implications", []),
                 key_contributions=resp.get("key_contributions", []),
             )
         except Exception as e:
@@ -673,10 +675,19 @@ class AnalysisAgent:
                 fields.append((f"assessment.weaknesses.{i}", w))
             for i, c in enumerate(result.assessment.key_contributions):
                 fields.append((f"assessment.key_contributions.{i}", c))
+            if result.assessment.marginal_contribution_summary:
+                fields.append(("assessment.marginal_contribution_summary", result.assessment.marginal_contribution_summary))
+            for i, imp in enumerate(result.assessment.practical_implications):
+                fields.append((f"assessment.practical_implications.{i}", imp))
         if result.methodology:
             for i, point in enumerate(result.methodology.analysis_points):
-                if isinstance(point, dict) and point.get("analysis"):
-                    fields.append((f"methodology.analysis_points.{i}.analysis", point["analysis"]))
+                if isinstance(point, dict):
+                    if point.get("analysis"):
+                        fields.append((f"methodology.analysis_points.{i}.analysis", point["analysis"]))
+                    if point.get("marginal_contribution"):
+                        fields.append((f"methodology.analysis_points.{i}.marginal_contribution", point["marginal_contribution"]))
+                    if point.get("practical_implication"):
+                        fields.append((f"methodology.analysis_points.{i}.practical_implication", point["practical_implication"]))
             for i, f in enumerate(result.methodology.factor_list):
                 if f.construction:
                     fields.append((f"methodology.factor_list.{i}.construction", f.construction))
@@ -728,6 +739,10 @@ class AnalysisAgent:
                     context_parts.append(
                         f"洞察-{point.get('title', '')}：{point.get('analysis', '')}"
                     )
+                    if point.get("marginal_contribution"):
+                        context_parts.append(f"  边际贡献：{point['marginal_contribution']}")
+                    if point.get("practical_implication"):
+                        context_parts.append(f"  实践推论：{point['practical_implication']}")
             for f in result.methodology.factor_list:
                 context_parts.append(f"因子-{f.name}（{f.type}）：{f.construction}")
 
@@ -741,6 +756,10 @@ class AnalysisAgent:
             context_parts.append(f"质量评分：{a.overall_quality_score}")
             context_parts.append(f"优势：{'；'.join(a.strengths)}")
             context_parts.append(f"不足：{'；'.join(a.weaknesses)}")
+            if a.marginal_contribution_summary:
+                context_parts.append(f"边际贡献总评：{a.marginal_contribution_summary}")
+            if a.practical_implications:
+                context_parts.append(f"实践推论：{'；'.join(a.practical_implications)}")
 
         context = "\n\n".join(context_parts)
 
@@ -756,7 +775,8 @@ class AnalysisAgent:
             "  其中 $r_t$ 为个股收益，$r_{m,t}$ 为市场收益...」\n"
             "- 错误示例：「该研究通过 $r_t = \\alpha + \\beta r_{m,t}$ 估计市场贝塔」或使用 \\(r_t\\) 格式\n\n"
             "【输出语言】全部用中文输出。\n\n"
-            "总结应自然涵盖：研究问题与核心贡献、数据与方法、关键公式及其作用、因子构建逻辑、综合评估。"
+            "总结应自然涵盖：研究问题与核心贡献、数据与方法、关键公式及其作用、因子构建逻辑、"
+            "边际贡献（相对基准的增量在哪）、实践推论（从业者该做什么不同的事）、综合评估。"
             "以自然段落组织，让读者能像读摘要一样流畅阅读。\n\n"
             f"论文标题：{title}\n\n"
             f"分析结果：\n{context}"

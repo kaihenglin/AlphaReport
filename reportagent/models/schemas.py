@@ -215,6 +215,8 @@ class Assessment(BaseModel):
     bias_risks: BiasRisks = Field(default_factory=BiasRisks)
     reproducibility: Reproducibility = Field(default_factory=Reproducibility)
     a_share_applicability: Optional[AShareApplicability] = None
+    marginal_contribution_summary: str = ""
+    practical_implications: list[str] = Field(default_factory=list)
     key_contributions: list[str] = Field(default_factory=list)
 
 

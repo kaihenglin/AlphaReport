@@ -172,6 +172,10 @@ def _build_summary_from_analysis(analysis: dict, title: str) -> str:
                 title = point.get("title", "")
                 analysis = point.get("analysis", "")
                 steps_text += f"\n- **{title}**：{analysis}"
+                if point.get("marginal_contribution"):
+                    steps_text += f"\n  边际贡献：{point['marginal_contribution']}"
+                if point.get("practical_implication"):
+                    steps_text += f"\n  实践推论：{point['practical_implication']}"
                 for fi in point.get("related_formulas", []):
                     if fi < len(equations):
                         eq = equations[fi]
@@ -193,13 +197,16 @@ def _build_summary_from_analysis(analysis: dict, title: str) -> str:
     assessment = analysis.get("assessment") or {}
     strengths = "\n".join(f"- {s}" for s in assessment.get("strengths", []))
     weaknesses = "\n".join(f"- {w}" for w in assessment.get("weaknesses", []))
+    marginal_summary = assessment.get("marginal_contribution_summary", "")
+    implications = "\n".join(f"- {imp}" for imp in assessment.get("practical_implications", []))
 
     return (
         "你是一位量化金融研究总结专家。请根据以下结构化的论文分析结果，"
         "撰写一份精炼的研报总结。\n\n"
         "【输出要求】\n"
         "- 以自然的叙述方式撰写，像一篇学术摘要一样流畅连贯。\n"
-        "- 总结应自然涵盖：研究问题与核心结论、方法步骤与关键公式、因子构建逻辑、综合评估。\n"
+        "- 总结应自然涵盖：研究问题与核心结论、方法步骤与关键公式、因子构建逻辑、"
+        "边际贡献（相对基准的增量在哪）、实践推论（从业者该做什么不同的事）、综合评估。\n"
         "- 不要使用分节标题，用自然的段落过渡。\n\n"
         "【强制格式要求 - 必须严格遵守】\n"
         "- 所有文本字段用中文输出。\n"
@@ -213,6 +220,8 @@ def _build_summary_from_analysis(analysis: dict, title: str) -> str:
         f"因子信息：{factors_text}\n\n"
         f"优势：\n{strengths}\n\n"
         f"不足：\n{weaknesses}\n\n"
+        f"边际贡献总评：{marginal_summary}\n\n"
+        f"实践推论：\n{implications}\n\n"
         f"综合评分：{assessment.get('overall_quality_score', '')}"
     )
 

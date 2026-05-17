@@ -133,6 +133,8 @@ export interface Assessment {
     adaptations_needed: string[];
     key_constraints: string[];
   };
+  marginal_contribution_summary: string;
+  practical_implications: string[];
   key_contributions: string[];
 }
 
