@@ -28,6 +28,7 @@ export interface ReportSummary {
   source: SourceType;
   source_url?: string;
   doi?: string;
+  arxiv_id?: string;
   published_date?: string;
   has_full_text: boolean;
   pdf_path?: string;
@@ -152,6 +153,18 @@ export interface AnalysisResult {
   analyzed_at: string;
 }
 
+export interface KnowledgeCard {
+  summary: string;
+  highlights: string[];
+  methodology_steps: string[];
+  results: string;
+  marginal_contributions: string;
+  implications: string[];
+  topics: string[];
+  asset_classes: string[];
+  quality_score: number | null;
+}
+
 export const BIAS_RISK_LABELS: Record<string, string> = {
   none: "无风险",
   low: "低风险",
@@ -230,6 +243,40 @@ export const FREQUENCY_LABELS: Record<Frequency, string> = {
   mixed: "混合",
 };
 
+// ── Email Subscriptions ──
+
+export interface ResearchDirection {
+  name: string;
+  topics: string[];
+  keywords: string[];
+  asset_classes: string[];
+  markets: string[];
+  updated_at: string;
+}
+
+export interface EmailSubscription {
+  user_id?: string;
+  email: string;
+  schedule_enabled: boolean;
+  schedule_time: string;
+  schedule_weekdays: string;
+  directions: Record<string, ResearchDirection>;
+  created_at: string;
+  updated_at: string;
+}
+
+export const WEEKDAY_LABELS: Record<string, string> = {
+  "mon-fri": "工作日 (周一至周五)",
+  "mon-sun": "每天",
+  mon: "周一",
+  tue: "周二",
+  wed: "周三",
+  thu: "周四",
+  fri: "周五",
+  sat: "周六",
+  sun: "周日",
+};
+
 // ── Chat ──
 
 export interface ChatMessage {
@@ -250,6 +297,8 @@ export interface ToolCallEvent {
 
 export interface ChatConversation {
   id: string;
+  user_id?: string;
+  email?: string;
   title: string;
   message_count: number;
   created_at: string;

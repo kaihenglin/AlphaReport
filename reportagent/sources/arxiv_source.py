@@ -118,7 +118,8 @@ class ArxivSource(BaseSource):
         import httpx
 
         updated = []
-        async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
+        timeout = httpx.Timeout(connect=15.0, read=30.0, write=10.0, pool=5.0)
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
             for r in results:
                 pdf_url = r.raw_metadata.get("pdf_url")
                 if not pdf_url or not r.abstract_only:
@@ -127,10 +128,10 @@ class ArxivSource(BaseSource):
 
                 try:
                     r = await asyncio.wait_for(
-                        self._fetch_one_pdf(client, r, pdf_url), timeout=90
+                        self._fetch_one_pdf(client, r, pdf_url), timeout=45
                     )
                 except asyncio.TimeoutError:
-                    logger.warning("PDF download/parse timed out for %s", r.title[:50])
+                    logger.warning("PDF download timed out for %s", r.title[:50])
                 except Exception as e:
                     logger.warning("PDF failed for %s: %s", r.title[:50], e)
 
@@ -143,11 +144,21 @@ class ArxivSource(BaseSource):
     ) -> SearchResult:
         resp = await client.get(pdf_url)
         resp.raise_for_status()
-        pdf_bytes = resp.content
+        # Read content with explicit timeout protection
+        pdf_bytes = await asyncio.wait_for(
+            asyncio.to_thread(lambda: resp.content), timeout=15
+        )
 
         saved_path = await asyncio.to_thread(self._save_pdf_bytes, pdf_bytes, result.arxiv_id)
 
-        full_text = await asyncio.to_thread(self._parse_pdf_bytes, pdf_bytes)
+        # Text extraction is optional — skip on timeout to avoid blocking
+        try:
+            full_text = await asyncio.wait_for(
+                asyncio.to_thread(self._parse_pdf_bytes, pdf_bytes), timeout=20
+            )
+        except asyncio.TimeoutError:
+            logger.debug("PDF text extraction skipped (timeout): %s", result.title[:40])
+            full_text = ""
 
         updates: dict = {}
         if saved_path:

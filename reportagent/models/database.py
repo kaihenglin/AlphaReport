@@ -48,6 +48,7 @@ class Report(Base):
     classification_method = Column(String(20))
 
     analysis_json = Column(Text)
+    knowledge_card_json = Column(Text)
 
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
@@ -89,3 +90,11 @@ class UserCriteriaPreset(Base):
     criteria_json = Column(Text, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    created_at = Column(DateTime, server_default=func.now())

@@ -53,3 +53,15 @@ def build_chat_agent():
         ALL_TOOLS,
         prompt=system_prompt,
     )
+
+
+def build_chat_agent_v2():
+    """Build the Plan-Execute-Reflect agent (replaces simple ReAct loop).
+
+    This agent plans subtasks before executing, reflects on intermediate
+    results, and synthesises a coherent answer across multiple tool calls.
+    Use this when the user request requires multi-step reasoning.
+    """
+    from reportagent.chat.graph import build_plan_execute_graph
+
+    return build_plan_execute_graph()

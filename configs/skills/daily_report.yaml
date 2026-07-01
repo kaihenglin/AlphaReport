@@ -1,0 +1,12 @@
+name: daily_report
+description: "生成每日研报简报 — 根据用户保存的研究方向，筛选近期新论文，生成摘要并通过邮件推送"
+prompt_template: |
+  请根据我保存的研究方向（{direction_name}），生成最近{days}天的每日研报简报。
+
+  要求：
+  1. 筛选匹配的新入库论文
+  2. 为每篇论文写一句核心要点总结
+  3. 提供 Knowledge Card 页面链接
+  4. 通过邮件发送推送
+
+  {send_email_instruction}

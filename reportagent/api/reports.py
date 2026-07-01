@@ -5,11 +5,12 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse, StreamingResponse
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from reportagent.api.deps import get_db
 from reportagent.db.repository import ReportRepository
-from reportagent.models.schemas import ReportListParams, ReportSummary
+from reportagent.models.schemas import ReportListParams, ReportSummary, KnowledgeCard
 
 router = APIRouter(prefix="/api/v1/reports", tags=["reports"])
 
@@ -27,6 +28,7 @@ def _report_to_summary(r) -> dict:
         "source": r.source,
         "source_url": r.source_url,
         "doi": r.doi,
+        "arxiv_id": r.arxiv_id,
         "published_date": r.published_date.isoformat() if r.published_date else None,
         "has_full_text": r.has_full_text,
         "pdf_path": r.pdf_path,
@@ -494,6 +496,228 @@ async def analyze_report(
         yield f"data: {json.dumps({'type': 'done', 'result': json.loads(analysis_json)})}\n\n"
 
     return StreamingResponse(stream_analysis(), media_type="text/event-stream")
+
+
+# ── Knowledge Card ──────────────────────────────────────────────
+
+
+def _map_analysis_to_knowledge_card(analysis: dict) -> dict:
+    """Map existing AnalysisResult dict to KnowledgeCard fields."""
+    methodology = analysis.get("methodology") or {}
+    assessment = analysis.get("assessment") or {}
+
+    # Highlights from key_contributions + strengths
+    highlights = list(assessment.get("key_contributions", [])[:3])
+    if not highlights:
+        highlights = assessment.get("strengths", [])[:3]
+
+    # Methodology steps from analysis_points
+    steps = []
+    for pt in methodology.get("analysis_points", []):
+        if isinstance(pt, dict):
+            step_text = pt.get("analysis", "") or pt.get("title", "")
+            if step_text:
+                steps.append(step_text)
+
+    return {
+        "summary": assessment.get("marginal_contribution_summary", "")
+                   or analysis.get("core_contribution", ""),
+        "highlights": highlights,
+        "methodology_steps": steps,
+        "results": analysis.get("summary", ""),
+        "marginal_contributions": assessment.get("marginal_contribution_summary", ""),
+        "implications": assessment.get("practical_implications", []),
+        "topics": [],
+        "asset_classes": [],
+        "quality_score": assessment.get("overall_quality_score"),
+    }
+
+
+_KNOWLEDGE_CARD_PROMPT = """你是量化金融研究助手。请根据以下论文内容，生成一份结构化的 Knowledge Card。
+
+论文标题：{title}
+
+论文内容：
+{content}
+
+请严格按照以下 JSON 格式返回（只返回 JSON，不要任何其他文字）：
+```json
+{{
+  "summary": "原文总结 — 用2-3句话概括论文的研究问题、方法和核心结论",
+  "highlights": ["关键发现1", "关键发现2", "关键发现3"],
+  "methodology_steps": ["方法步骤1：...", "方法步骤2：...", "方法步骤3：..."],
+  "results": "实证结果描述 — 论文的主要实证发现和数据支撑",
+  "marginal_contributions": "边际贡献 — 相对于现有文献，这篇论文的增量贡献是什么",
+  "implications": ["实践启示1", "实践启示2", "实践启示3"]
+}}
+```
+
+要求：
+- summary: 2-3句精炼总结
+- highlights: 3-5个关键亮点，每条一句话
+- methodology_steps: 按步骤顺序描述方法，3-6条
+- results: 描述主要实证结果，包含关键数据
+- marginal_contributions: 说明相对已有研究的增量贡献
+- implications: 2-4条对量化投资实践的启示
+- 所有文本用中文
+- **公式格式**：所有数学公式必须使用 LaTeX 语法。行内公式用 $...$ 包裹，独立公式用 $$...$$ 包裹。示例：$\\alpha_i$、$$R_t = \\mu + \\sigma \\varepsilon_t$$。变量名、希腊字母、上下标、分数、求和等一律用 LaTeX 表达，禁止使用纯文本如 "alpha" 或 "R_t"。"""
+
+
+@router.post("/{report_id}/knowledge-card")
+async def get_knowledge_card(
+    report_id: int,
+    force: bool = Query(False, description="强制重新生成，忽略已有的分析缓存"),
+    db: Session = Depends(get_db),
+):
+    """获取论文的 Knowledge Card 结构化摘要。"""
+    repo = ReportRepository(db)
+    report = repo.get_report(report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    topics = report.topics.split(",") if report.topics else []
+    asset_classes = report.asset_classes.split(",") if report.asset_classes else []
+
+    # 1) Return cached LLM-generated Knowledge Card (unless force=True)
+    if not force and report.knowledge_card_json:
+        try:
+            kc = json.loads(report.knowledge_card_json)
+            kc["topics"] = topics
+            kc["asset_classes"] = asset_classes
+            return {"success": True, "data": kc}
+        except (json.JSONDecodeError, Exception):
+            pass
+
+    # 2) Map from existing analysis_json (unless force=True)
+    if not force and report.analysis_json:
+        try:
+            analysis = json.loads(report.analysis_json)
+            kc = _map_analysis_to_knowledge_card(analysis)
+            kc["topics"] = topics
+            kc["asset_classes"] = asset_classes
+            return {"success": True, "data": kc}
+        except (json.JSONDecodeError, Exception):
+            pass
+
+    # 3) Generate via LLM
+    content = report.full_text or report.abstract or ""
+    if not content:
+        raise HTTPException(status_code=400, detail="No content available for this report")
+
+    from reportagent.llm.client import LLMClient
+
+    prompt = _KNOWLEDGE_CARD_PROMPT.format(
+        title=report.title,
+        content=content[:8000],
+    )
+
+    client = LLMClient()
+    try:
+        resp = await client.chat_json(
+            [{"role": "user", "content": prompt}],
+            temperature=0.3,
+            max_tokens=2000,
+        )
+        resp["topics"] = topics
+        resp["asset_classes"] = asset_classes
+        resp["quality_score"] = None
+
+        # Persist the generated Knowledge Card so subsequent visits don't re-run LLM
+        try:
+            report.knowledge_card_json = json.dumps(resp, ensure_ascii=False)
+            db.commit()
+        except Exception:
+            db.rollback()
+
+        return {"success": True, "data": resp}
+    except Exception as e:
+        return {
+            "success": True,
+            "data": {
+                "summary": report.abstract or f"论文「{report.title}」的 Knowledge Card 生成失败: {e}",
+                "highlights": [],
+                "methodology_steps": [],
+                "results": "",
+                "marginal_contributions": "",
+                "implications": [],
+                "topics": topics,
+                "asset_classes": asset_classes,
+                "quality_score": None,
+            },
+        }
+
+
+# ── Per-Paper Ask AI ────────────────────────────────────────────
+
+
+_ASK_SYSTEM_PROMPT = """你是一个量化金融论文问答助手。根据以下论文内容回答用户的问题。
+
+论文标题：{title}
+作者：{authors}
+
+论文内容：
+{content}
+
+规则：
+- 只能基于上述论文内容回答问题，不要引入外部知识
+- 如果论文中没有相关信息，诚实说明"论文中未涉及此内容"
+- 引用论文中的具体段落或数据来支撑你的回答
+- 用中文回答
+- 使用 Markdown 格式化，数学符号用 $...$ 格式"""
+
+
+class AskRequest(BaseModel):
+    question: str
+
+
+@router.post("/{report_id}/ask")
+async def ask_paper(
+    report_id: int,
+    req: AskRequest,
+    db: Session = Depends(get_db),
+):
+    """针对单篇论文的问答（SSE 流式）。"""
+    repo = ReportRepository(db)
+    report = repo.get_report(report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    content = report.full_text or report.abstract or ""
+    if not content:
+        raise HTTPException(status_code=400, detail="No content available")
+
+    authors_str = ""
+    if report.authors:
+        try:
+            authors_list = json.loads(report.authors)
+            authors_str = ", ".join(authors_list[:5])
+        except Exception:
+            pass
+
+    system_prompt = _ASK_SYSTEM_PROMPT.format(
+        title=report.title,
+        authors=authors_str,
+        content=content[:12000],
+    )
+
+    from reportagent.llm.client import LLMClient
+
+    async def stream_answer():
+        client = LLMClient()
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": req.question},
+        ]
+        try:
+            async for chunk in client.chat_stream(
+                messages, temperature=0.3, max_tokens=2000
+            ):
+                yield f"data: {json.dumps({'type': 'token', 'content': chunk}, ensure_ascii=False)}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
+        yield f"data: {json.dumps({'type': 'done'})}\n\n"
+
+    return StreamingResponse(stream_answer(), media_type="text/event-stream")
 
 
 @router.get("/{report_id}/pdf")

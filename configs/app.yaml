@@ -13,6 +13,7 @@ sources:
   arxiv:
     enabled: true
     rate_limit_seconds: 3
+    download_pdfs: true
     default_categories:
       - "q-fin.TR"
       - "q-fin.PM"
@@ -20,7 +21,6 @@ sources:
       - "q-fin.ST"
       - "q-fin.CP"
       - "q-fin.MF"
-    download_pdfs: true
 
   ssrn:
     enabled: true
@@ -54,7 +54,9 @@ llm:
   max_retries: 3
 
 chat:
+  agent_version: "v2"
   system_prompt_path: "configs/prompts/chat_system.txt"
+  brainstorm_prompt_path: "configs/prompts/brainstorm_system.txt"
   skills_dir: "configs/skills"
   user_skills_dir: "data/user_skills"
   max_history_messages: 50
@@ -63,6 +65,34 @@ chat:
 collection:
   max_concurrent_sources: 4
   query_expansion_enabled: true
+
+vector_store:
+  persist_dir: "data/chroma_db"
+  embedding_backend: "local"
+  local_model: "BAAI/bge-small-zh-v1.5"
+  local_dim: 512
+  openai_model: "text-embedding-3-small"
+  openai_dim: 1536
+  openai_base_url: ""
+  voyage_model: "voyage-3-lite"
+  voyage_dim: 1024
+
+email:
+  enabled: true
+  smtp_host: "smtp.qq.com"
+  smtp_port: 587
+  username_env: "EMAIL_USERNAME"
+  password_env: "EMAIL_PASSWORD"
+  from_addr: "416975099@qq.com"
+  to_addrs: []
+
+daily_report:
+  enabled: true
+  schedule_cron: "02:00"
+  frontend_base_url: "http://121.43.233.178"
+  arxiv_collection:
+    enabled: true
+    schedule_cron: "00:00"
 
 server:
   host: "0.0.0.0"

@@ -42,3 +42,13 @@ def init_db():
     from reportagent.models.database import Base
     engine = get_engine()
     Base.metadata.create_all(bind=engine)
+
+    # Add knowledge_card_json column if missing (SQLite doesn't support ALTER TABLE ADD COLUMN IF NOT EXISTS directly)
+    import sqlite3
+    try:
+        with engine.connect() as conn:
+            conn.exec_driver_sql(
+                "ALTER TABLE reports ADD COLUMN knowledge_card_json TEXT"
+            )
+    except Exception:
+        pass  # Column already exists or other non-critical error

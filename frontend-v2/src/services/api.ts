@@ -1,10 +1,19 @@
-import type { UserCriteria, ApiResponse, ReportSummary, ReportDetail, CollectionTask, ReportStats, ChatConversation } from "../types";
+import type { UserCriteria, ApiResponse, ReportSummary, ReportDetail, CollectionTask, ReportStats, ChatConversation, KnowledgeCard, EmailSubscription } from "../types";
 
 const BASE = "/api/v1";
+const EMAIL_KEY = "alphareport.email";
+
+function authHeaders(): Record<string, string> {
+  const email = localStorage.getItem(EMAIL_KEY) || "";
+  return {
+    "Content-Type": "application/json",
+    "X-User-Email": email,
+  };
+}
 
 async function request<T>(url: string, options?: RequestInit): Promise<ApiResponse<T>> {
   const res = await fetch(url, {
-    headers: { "Content-Type": "application/json" },
+    headers: authHeaders(),
     ...options,
   });
   return res.json();
@@ -111,4 +120,97 @@ export async function getConversations() {
 
 export async function deleteConversation(id: string) {
   return request(`${BASE}/chat/conversations/${id}`, { method: "DELETE" });
+}
+
+// ── Knowledge Card ──
+
+export async function getKnowledgeCard(id: number, force: boolean = false) {
+  return request<KnowledgeCard>(
+    `${BASE}/reports/${id}/knowledge-card?force=${force}`,
+    { method: "POST" }
+  );
+}
+
+// ── Per-Paper Ask AI ──
+
+// ── Per-Paper Ask AI ──
+
+export const askPaperUrl = (id: number) => `${BASE}/reports/${id}/ask`;
+
+// ── Email Settings ──
+
+export async function getEmailConfig() {
+  return request<{
+    enabled: boolean;
+    smtp_host: string;
+    smtp_port: number;
+    from_addr: string;
+    subscription_count: number;
+  }>(`${BASE}/email/config`);
+}
+
+export async function sendTestEmail(email: string) {
+  return request<{ success: boolean; message: string }>(
+    `${BASE}/subscriptions/${encodeURIComponent(email)}/test`,
+    { method: "POST" }
+  );
+}
+
+// ── Subscriptions ──
+
+export async function getSubscriptions() {
+  return request<EmailSubscription[]>(`${BASE}/subscriptions`);
+}
+
+export async function getSubscription(email: string) {
+  return request<EmailSubscription>(`${BASE}/subscriptions/${encodeURIComponent(email)}`);
+}
+
+export async function createSubscription(data: {
+  email: string;
+  user_id?: string;
+  schedule_time?: string;
+  schedule_weekdays?: string;
+  schedule_enabled?: boolean;
+}) {
+  return request<EmailSubscription>(`${BASE}/subscriptions`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteSubscription(email: string) {
+  return request(`${BASE}/subscriptions/${encodeURIComponent(email)}`, {
+    method: "DELETE",
+  });
+}
+
+export async function updateSubscriptionSchedule(
+  email: string,
+  data: { enabled?: boolean; schedule_time?: string; schedule_weekdays?: string }
+) {
+  return request<EmailSubscription>(
+    `${BASE}/subscriptions/${encodeURIComponent(email)}/schedule`,
+    { method: "PUT", body: JSON.stringify(data) }
+  );
+}
+
+// ── Schedule Status ──
+
+export interface SubscriptionScheduleInfo {
+  user_id?: string;
+  email: string;
+  schedule_enabled: boolean;
+  schedule_time: string;
+  schedule_weekdays: string;
+  next_run: string | null;
+  direction_count: number;
+}
+
+export async function getScheduleStatus() {
+  return request<{
+    running: boolean;
+    config_enabled: boolean;
+    subscriptions: Record<string, SubscriptionScheduleInfo>;
+  }>(`${BASE}/schedule`);
 }

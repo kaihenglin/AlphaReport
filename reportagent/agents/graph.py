@@ -9,6 +9,7 @@ from reportagent.agents.analysis_agent import AnalysisAgent
 from reportagent.agents.storage_agent import StorageAgent
 from reportagent.classifiers.rule_classifier import RuleClassifier
 from reportagent.classifiers.llm_classifier import LLMClassifier
+from reportagent.classifiers.quant_filter import is_quant_finance
 from reportagent.llm.client import LLMClient
 from reportagent.sources.local_pdf import LocalPDFSource
 from reportagent.sources.arxiv_source import ArxivSource
@@ -78,6 +79,12 @@ def _should_classify(state: AgentState) -> str:
 
 def _should_analyze(state: AgentState) -> str:
     if state.get("classified_reports"):
+        return "filter"
+    return "end"
+
+
+def _should_analyze_after_filter(state: AgentState) -> str:
+    if state.get("classified_reports"):
         return "analyze"
     return "end"
 
@@ -109,6 +116,33 @@ def build_collection_graph(progress_cb=None, cancel_check=None):
     async def classify(state: AgentState) -> AgentState:
         return await classification_agent.run(state)
 
+    async def quant_filter(state: AgentState) -> AgentState:
+        """Filter out non-quant papers before analysis and storage."""
+        reports = state.get("classified_reports", [])
+        if not reports:
+            return state
+
+        passed: list = []
+        rejected: list[str] = []
+        for cr in reports:
+            sr = cr.search_result
+            title = sr.title or ""
+            abstract = sr.abstract or ""
+            if is_quant_finance(title, abstract):
+                passed.append(cr)
+            else:
+                rejected.append(title[:80])
+
+        if rejected:
+            state["messages"].append(
+                f"Quant filter: rejected {len(rejected)} non-quant papers: "
+                + "; ".join(rejected[:5])
+                + (f" ... and {len(rejected)-5} more" if len(rejected) > 5 else "")
+            )
+
+        state["classified_reports"] = passed
+        return state
+
     async def analyze(state: AgentState) -> AgentState:
         return await analysis_agent.run(state)
 
@@ -119,6 +153,7 @@ def build_collection_graph(progress_cb=None, cancel_check=None):
 
     graph.add_node("collect", collect)
     graph.add_node("classify", classify)
+    graph.add_node("filter", quant_filter)
     graph.add_node("analyze", analyze)
     graph.add_node("store", store)
 
@@ -136,6 +171,15 @@ def build_collection_graph(progress_cb=None, cancel_check=None):
     graph.add_conditional_edges(
         "classify",
         _should_analyze,
+        {
+            "filter": "filter",
+            "end": END,
+        },
+    )
+
+    graph.add_conditional_edges(
+        "filter",
+        _should_analyze_after_filter,
         {
             "analyze": "analyze",
             "end": END,

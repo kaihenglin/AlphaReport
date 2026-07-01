@@ -1,0 +1,40 @@
+# Docker (只排除脚本，保留 nginx.conf 等)
+deploy/.env.production
+deploy/app.production.yaml
+deploy/deploy.sh
+deploy/docker-compose.yml
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.eggs/
+*.egg-info/
+
+# Node
+frontend-v2/node_modules/
+frontend-v2/dist/
+
+# Data (mounted at runtime)
+data/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Git
+.git/
+.gitignore
+
+# Env
+.env
+.env.*
+
+# macOS
+.DS_Store
+
+# Large models
+*.bin
+*.safetensors
+*.pth

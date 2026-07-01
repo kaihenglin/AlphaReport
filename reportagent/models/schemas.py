@@ -234,6 +234,29 @@ class AnalysisResult(BaseModel):
     analyzed_at: str = ""
 
 
+class KnowledgeCard(BaseModel):
+    """Structured summary card for report detail page display.
+
+    Designed for the 6-section layout:
+    - summary: original paper overview
+    - highlights: key findings as bullet points
+    - methodology_steps: numbered methodology breakdown
+    - results: empirical results description
+    - marginal_contributions: what this paper adds beyond existing literature
+    - implications: practical implications for quant investment
+    """
+
+    summary: str = ""
+    highlights: list[str] = Field(default_factory=list)
+    methodology_steps: list[str] = Field(default_factory=list)
+    results: str = ""
+    marginal_contributions: str = ""
+    implications: list[str] = Field(default_factory=list)
+    topics: list[str] = Field(default_factory=list)
+    asset_classes: list[str] = Field(default_factory=list)
+    quality_score: float | None = None
+
+
 class ReportListParams(BaseModel):
     market: Optional[str] = None
     asset_class: Optional[str] = None

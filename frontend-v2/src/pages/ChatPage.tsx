@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Markdown from "react-markdown";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import { useAuth } from "../contexts/AuthContext";
 import type { ChatMessage, ToolCallEvent, ChatConversation } from "../types";
 import { CHAT_STREAM_URL, getConversations, deleteConversation } from "../services/api";
 
@@ -79,7 +82,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
         {msg.toolCalls?.map((tc, i) => <ToolCallBlock key={i} tc={tc} />)}
         {msg.content && (
           <div className="prose prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-pre:bg-gray-50 prose-pre:text-xs">
-            <Markdown>{msg.content}</Markdown>
+            <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{msg.content}</Markdown>
           </div>
         )}
         {msg.isStreaming && !msg.content && !msg.thinking && (
@@ -149,6 +152,7 @@ function ConversationSidebar({
 }
 
 export default function ChatPage() {
+  const { email } = useAuth();
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -167,7 +171,7 @@ export default function ChatPage() {
 
   useEffect(() => {
     loadConversations();
-  }, []);
+  }, [email]);
 
   const loadConversations = async () => {
     const res = await getConversations();
@@ -184,7 +188,6 @@ export default function ChatPage() {
   const handleSelectConversation = (id: string) => {
     setConversationId(id);
     setMessages([]);
-    // Load conversation messages from backend
     fetch(`/api/v1/chat/conversations/${id}`)
       .then((r) => r.json())
       .then((res) => {
@@ -361,6 +364,14 @@ export default function ChatPage() {
       />
 
       <div className="flex-1 flex flex-col min-w-0">
+        <div className="border-b border-gray-200 bg-white px-4 py-2">
+          <div className="max-w-3xl mx-auto flex items-center gap-2">
+            <span className="text-xs text-gray-400">
+              当前用户：{email}
+            </span>
+          </div>
+        </div>
+
         {/* Messages area */}
         <div className="flex-1 overflow-y-auto px-4 py-4">
           <div className="max-w-3xl mx-auto">

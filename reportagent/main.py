@@ -4,13 +4,27 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from reportagent.db.engine import init_db
-from reportagent.api import collection, reports, classification, system, chat
+from reportagent.api import collection, reports, classification, system, chat, email_api
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    import logging
+    _log = logging.getLogger(__name__)
     init_db()
+    try:
+        from reportagent.services.scheduler import start_scheduler
+        start_scheduler()
+        print("[MAIN] Scheduler started OK", flush=True)
+    except Exception as e:
+        print(f"[MAIN] Scheduler startup failed: {e}", flush=True)
+        _log.warning("Scheduler failed to start: %s", e)
     yield
+    try:
+        from reportagent.services.scheduler import stop_scheduler
+        stop_scheduler()
+    except Exception:
+        pass
 
 
 app = FastAPI(
@@ -32,6 +46,7 @@ app.include_router(reports.router)
 app.include_router(classification.router)
 app.include_router(system.router)
 app.include_router(chat.router)
+app.include_router(email_api.router)
 
 
 if __name__ == "__main__":
