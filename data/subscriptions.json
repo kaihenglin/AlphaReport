@@ -1,4 +1,220 @@
 {
-  "subscriptions": {},
+  "subscriptions": {
+    "416975099@qq.com": {
+      "user_id": "email:194602fe531a79bf",
+      "email": "416975099@qq.com",
+      "schedule_enabled": true,
+      "schedule_time": "08:00",
+      "schedule_weekdays": "mon-fri",
+      "directions": {
+        "A股多因子选股": {
+          "topics": [
+            "factor_model"
+          ],
+          "keywords": [
+            "多因子",
+            "alpha因子",
+            "因子挖掘",
+            "因子择时",
+            "风格因子",
+            "行业轮动",
+            "量价因子",
+            "基本面因子",
+            "另类数据",
+            "因子拥挤",
+            "因子衰减",
+            "IC",
+            "IR",
+            "因子正交",
+            "多因子组合"
+          ],
+          "asset_classes": [
+            "stock"
+          ],
+          "markets": [
+            "china"
+          ],
+          "updated_at": "2026-06-18T07:59:15.519409+00:00"
+        },
+        "机器学习量化模型": {
+          "topics": [
+            "ai_ml_model"
+          ],
+          "keywords": [
+            "深度学习",
+            "强化学习",
+            "Transformer",
+            "LSTM",
+            "图神经网络",
+            "NLP",
+            "LLM",
+            "大语言模型",
+            "生成模型",
+            "时序预测",
+            "梯度提升",
+            "XGBoost",
+            "LightGBM",
+            "CatBoost",
+            "监督学习",
+            "随机森林",
+            "支持向量机",
+            "LASSO",
+            "弹性网络",
+            "集成学习",
+            "神经网络",
+            "注意力机制",
+            "对比学习",
+            "自监督学习",
+            "迁移学习"
+          ],
+          "asset_classes": [
+            "stock",
+            "futures",
+            "crypto",
+            "multi_asset"
+          ],
+          "markets": [
+            "china",
+            "global"
+          ],
+          "updated_at": "2026-06-18T07:59:15.520261+00:00"
+        },
+        "投资组合优化": {
+          "topics": [
+            "portfolio_optimization",
+            "risk_model"
+          ],
+          "keywords": [
+            "均值方差",
+            "风险平价",
+            "贝叶斯优化",
+            "稳健优化",
+            "交易成本",
+            "Black-Litterman",
+            "CVaR",
+            "最大夏普",
+            "风险预算",
+            "再平衡",
+            "ESG约束",
+            "多期优化",
+            "随机控制",
+            "因子投资组合",
+            "层次风险平价",
+            "在线学习",
+            "Barra",
+            "多因子风险模型",
+            "协方差估计",
+            "风险分解",
+            "行业风险",
+            "风格风险",
+            "特质风险",
+            "风险归因",
+            "压力测试",
+            "情景分析",
+            "尾部风险",
+            "VaR"
+          ],
+          "asset_classes": [
+            "stock",
+            "futures",
+            "options",
+            "multi_asset"
+          ],
+          "markets": [
+            "china",
+            "global"
+          ],
+          "updated_at": "2026-06-18T07:59:15.520894+00:00"
+        },
+        "高频交易与市场微观结构": {
+          "topics": [
+            "market_microstructure",
+            "execution_algo"
+          ],
+          "keywords": [
+            "高频交易",
+            "订单簿",
+            "买卖价差",
+            "流动性",
+            "市场冲击",
+            "最优执行",
+            "做市策略",
+            "套利",
+            "限价订单簿",
+            "tick数据",
+            "波动率微结构",
+            "市场微观结构噪声"
+          ],
+          "asset_classes": [
+            "stock",
+            "futures",
+            "crypto"
+          ],
+          "markets": [
+            "china",
+            "global"
+          ],
+          "updated_at": "2026-06-18T07:59:15.521881+00:00"
+        },
+        "波动率与衍生品定价": {
+          "topics": [
+            "volatility"
+          ],
+          "keywords": [
+            "波动率建模",
+            "随机波动率",
+            "隐含波动率",
+            "期权定价",
+            "VIX",
+            "波动率曲面",
+            "跳跃扩散",
+            "粗糙波动率",
+            "Heston模型",
+            "GARCH",
+            "已实现波动率",
+            "波动率预测",
+            "方差互换"
+          ],
+          "asset_classes": [
+            "options",
+            "futures",
+            "stock"
+          ],
+          "markets": [
+            "china",
+            "global"
+          ],
+          "updated_at": "2026-06-18T07:59:15.522518+00:00"
+        },
+        "另类数据与量化策略": {
+          "topics": [
+            "alternative_data"
+          ],
+          "keywords": [
+            "卫星图像",
+            "社交媒体",
+            "新闻情绪",
+            "供应链数据",
+            "文本挖掘",
+            "基本面量化",
+            "ESG数据",
+            "宏观经济另类指标",
+            "网络爬虫"
+          ],
+          "asset_classes": [
+            "stock",
+            "multi_asset"
+          ],
+          "markets": [
+            "china",
+            "global"
+          ],
+          "updated_at": "2026-06-18T07:59:15.523287+00:00"
+        }
+      },
+      "created_at": "2026-06-18T07:55:08.670232+00:00",
+      "updated_at": "2026-06-18T07:59:15.523305+00:00"
+    }
+  },
   "_version": 3
 }
